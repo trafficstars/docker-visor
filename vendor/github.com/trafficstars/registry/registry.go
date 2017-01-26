@@ -39,7 +39,11 @@ func New(dsn string, osArgs []string) (Registry, error) {
 			registry.refreshInterval = time.Duration(v) * time.Second
 		}
 	}
-	go registry.supervisor()
+	if len(dsn) != 0 {
+		go registry.supervisor()
+	} else {
+		registry.refreshInterval = -1
+	}
 	return &registry, nil
 }
 
@@ -58,6 +62,8 @@ func (r *registry) KV() KV {
 func (r *registry) Discovery() Discovery {
 	return &discovery{
 		agent:      r.client.Agent(),
+		health:     r.client.Health(),
+		catalog:    r.client.Catalog(),
 		datacenter: r.datacenter,
 	}
 }
