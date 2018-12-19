@@ -51,9 +51,9 @@ func (d *discovery) Register(options ServiceOptions) error {
 		Check: &api.AgentServiceCheck{
 			Interval: options.Check.Interval,
 			Timeout:  options.Check.Timeout,
+			HTTP:     options.Check.HTTP,
+			TCP:      options.Check.TCP,
 			DeregisterCriticalServiceAfter: "10m",
-			HTTP: options.Check.HTTP,
-			TCP:  options.Check.TCP,
 		},
 	})
 }
