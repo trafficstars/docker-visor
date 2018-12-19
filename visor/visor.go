@@ -180,6 +180,10 @@ func (s *visor) serviceRegister(containerID string) error {
 		}
 	}
 
+	if address == "" {
+		address = net.JoinHostPort(hostIP, port)
+	}
+
 	tags = append(tags,
 		fmt.Sprintf("HOST_IP=%s", hostIP),
 		fmt.Sprintf("CPU_USAGE=%f", stats.CPUUsage),
