@@ -39,7 +39,8 @@ func Run() {
 		log.Fatal(err)
 	}
 
-	registry, err := registry.New(env("REGISTRY_DSN", defaultRegistryDSN), []string{})
+	registryURL := env("REGISTRY_DSN", defaultRegistryDSN)
+	registry, err := registry.New(registryURL, []string{})
 	if err != nil {
 		log.Fatal(err)
 	}
@@ -74,19 +75,44 @@ func (s *visor) refresh() {
 	if s.isInProgress() {
 		return
 	}
+
 	s.setInProgress(true)
+	defer s.setInProgress(false)
+
+	hostIP := os.Getenv("HOST_IP")
+	services, err := s.discovery.Lookup(&registry.Filter{Tags: []string{"HOST_IP=" + hostIP}})
+	if err != nil {
+		log.Errorf("Discovery get list of the services on HOST_IP=%s: %v", hostIP, err)
+	}
+
 	containers, err := s.docker.ContainerList(context.Background(), types.ContainerListOptions{})
 	if err != nil {
 		log.Errorf("Refresh services (container list): %v", err)
 		return
 	}
+
+	// Refresh registration of exists services
 	for _, container := range containers {
-		log.Debugf("Refresh container: %s", container.ID[:12])
+		log.Infof("Refresh container: %s", container.ID[:12])
 		if err := s.serviceRegister(container.ID); err != nil {
 			log.Errorf("Register service [%s]: %v", container.ID[:12], err)
 		}
 	}
-	s.setInProgress(false)
+
+	// Deregister unexisted services on this HOST
+cleanLoop:
+	for _, srv := range services {
+		for _, container := range containers {
+			if container.ID == srv.ID {
+				continue cleanLoop
+			}
+		}
+
+		log.Infof("Deregister container: %s", srv.ID[:12])
+		if err := s.discovery.Deregister(srv.ID); err != nil {
+			log.Errorf("Deregister container [%s]: %v", srv.ID[:12], err)
+		}
+	}
 }
 
 // containerStats collects base metrics of the container (CPU, Memory usage)
@@ -236,18 +262,20 @@ func (s *visor) run() {
 		select {
 		case event := <-events:
 			switch event.Action {
-			case "start", "unpause":
-				log.Debugf("Register new container: %s", event.Actor.ID[:12])
-				go func() {
-					if err := s.serviceRegister(event.Actor.ID); err != nil {
-						log.Errorf("Register service [%s]: %v", event.Actor.ID[:12], err)
-					}
-				}()
-			case "die", "kill", "stop", "pause", "oom":
-				log.Debugf("Deregister service [%s]: %s (%v)", event.Action, event.Actor.ID[:12], event.Actor.Attributes)
+			case "start", "unpause", "refresh", "resumed":
+				log.Infof("Register new service [%s]: %s", event.Action, event.Actor.ID[:12])
+
+				if err := s.serviceRegister(event.Actor.ID); err != nil {
+					log.Errorf("Register service [%s]: %s (%v)", event.Action, event.Actor.ID[:12], err)
+				}
+			case "die", "kill", "stop", "pause", "paused", "oom":
+				log.Infof("Deregister service [%s]: %s (%v)", event.Action, event.Actor.ID[:12], event.Actor.Attributes)
+
 				if err := s.discovery.Deregister(event.Actor.ID); err != nil {
 					log.Errorf("Deregister service [%s]: %v", event.Action, err)
 				}
+			default:
+				log.Infof("Service unsupported event [%s]: %s (%v)", event.Action, event.Actor.ID[:12], event.Actor.Attributes)
 			}
 		case error := <-errors:
 			log.Errorf("Event: %v", error)
@@ -301,7 +329,7 @@ func (s *visor) unregisterService(rw http.ResponseWriter, req *http.Request) {
 
 	if err != nil {
 		rw.WriteHeader(http.StatusBadRequest)
-		encoder.Encode(map[string]interface{}{"result": "error", "error": err})
+		encoder.Encode(map[string]interface{}{"result": "error", "error": err.Error()})
 		return
 	}
 
