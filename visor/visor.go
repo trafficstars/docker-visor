@@ -213,6 +213,7 @@ func (s *visor) serviceRegister(containerID string) error {
 	tags = append(tags,
 		fmt.Sprintf("HOST_IP=%s", hostIP),
 		fmt.Sprintf("CPU_USAGE=%f", stats.CPUUsage),
+		fmt.Sprintf("NUMCPU=%d", runtime.NumCPU()),
 		fmt.Sprintf("MEMORY_USAGE=%f", (float64(stats.MemoryUsage)/float64(stats.MemoryLimit))*100),
 		fmt.Sprintf("MEMORY_LIMIT=%d", stats.MemoryLimit),
 		fmt.Sprintf("MEMORY_TOTAL=%d", s.info.MemTotal),
