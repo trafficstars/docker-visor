@@ -34,6 +34,9 @@ ENV TAG_NAME2=200
 # Health check optional
 ENV CHECK_INTERVAL=5s
 ENV CHECK_TIMEOUT=1s
+ENV CHECK_TTL=10m
 # {address} will be replaced automaticaly on host IP:{SERVICE_PORT}
 ENV CHECK_HTTP=http://{address}/health-check
+
+ENV CHECK_DEREGISTER_AFTER=10m
 ```

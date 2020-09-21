@@ -57,6 +57,7 @@ func Run() {
 	}).run()
 }
 
+// Stats of the service
 type Stats struct {
 	CPUUsage    float64
 	MemoryUsage uint64
@@ -404,6 +405,10 @@ func checkOptions(address string, env []string) registry.CheckOptions {
 			options.HTTP = strings.Replace(strings.TrimPrefix(e, "CHECK_HTTP="), "{{address}}", address, 1)
 		case strings.HasPrefix(e, "CHECK_TCP="):
 			options.TCP = strings.Replace(strings.TrimPrefix(e, "CHECK_TCP="), "{{address}}", address, 1)
+		case strings.HasPrefix(e, "CHECK_TTL="):
+			options.TTL = strings.TrimPrefix(e, "CHECK_TTL=")
+		case strings.HasPrefix(e, "CHECK_DEREGISTER_AFTER="):
+			options.DeregisterAfter = strings.TrimPrefix(e, "CHECK_DEREGISTER_AFTER=")
 		}
 	}
 	return options

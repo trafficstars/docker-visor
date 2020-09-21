@@ -1,14 +1,13 @@
 package main
 
 import (
+	"net/http"
+	_ "net/http/pprof"
+	"os"
 	"strconv"
 
 	log "github.com/Sirupsen/logrus"
 	"github.com/trafficstars/docker-visor/visor"
-
-	"net/http"
-	_ "net/http/pprof"
-	"os"
 )
 
 func init() {

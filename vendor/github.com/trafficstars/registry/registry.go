@@ -10,8 +10,10 @@ import (
 
 var args []string
 
-const REGISTRY_PREFIX = "registry"
+// RegistryPrefix represents the name of the meta field of config
+const RegistryPrefix = "registry"
 
+// New registry contoller interface
 func New(dsn string, osArgs []string) (Registry, error) {
 	args = osArgs
 	url, err := url.Parse(dsn)
@@ -99,12 +101,22 @@ func (r *registry) refresh() {
 		}
 	}
 	for _, config := range r.configs {
-		config.mutex.Lock()
+		var updatedItemKeys []string
+
+		config.rawConfig.Lock()
 		for _, item := range config.items {
-			if value, ok := values[item.key]; ok {
-				item.set(value)
+			value, ok := values[item.key]
+			if !ok {
+				continue
 			}
+			if item.equal(value) {
+				continue
+			}
+			item.set(value)
+			updatedItemKeys = append(updatedItemKeys, item.path)
 		}
-		config.mutex.Unlock()
+		config.rawConfig.Unlock()
+
+		config.callOnUpdatedMethod(updatedItemKeys) // Call method "OnUpdate<variableName>" if exists
 	}
 }
