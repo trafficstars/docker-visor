@@ -109,9 +109,13 @@ cleanLoop:
 			}
 		}
 
-		log.Infof("Deregister container: %s", srv.ID[:12])
+		serviceID := srv.ID
+		if len(serviceID) >= 12 {
+			serviceID = serviceID[:12]
+		}
+		log.Infof("Deregister container: %s", serviceID)
 		if err := s.discovery.Deregister(srv.ID); err != nil {
-			log.Errorf("Deregister container [%s]: %v", srv.ID[:12], err)
+			log.Errorf("Deregister container [%s]: %v", serviceID, err)
 		}
 	}
 }
